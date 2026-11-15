@@ -22,6 +22,8 @@
   "section_break_nuty",
   "short_description",
   "full_description",
+  "section_break_courses",
+  "courses",
   "connections_tab"
  ],
  "fields": [
@@ -126,6 +128,18 @@
    "fieldname": "maximum_unit_load",
    "fieldtype": "Float",
    "label": "Maximum Unit Load"
+  },
+  {
+   "fieldname": "section_break_courses",
+   "fieldtype": "Section Break",
+   "label": "Courses"
+  },
+  {
+   "description": "Courses offered by this programme. The child table keeps curriculum metadata such as category, sort order and weekly periods.",
+   "fieldname": "courses",
+   "fieldtype": "Table",
+   "label": "Courses",
+   "options": "Program Course"
   }
  ],
  "image_field": "hero_image",
@@ -176,7 +190,7 @@
    "link_fieldname": "program"
   }
  ],
- "modified": "2026-10-30 13:28:05.016103",
+ "modified": "2026-11-15 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Program",

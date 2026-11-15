@@ -14,18 +14,18 @@ from frappe.utils.dateutils import get_dates_from_timegrain
 from education.education.doctype.student_batch_name.student_batch_name import (
 	get_batch_students as get_students_of_batch,
 )
+from education.education.program_courses import get_program_course_names, get_program_course_rows
 
 
 def get_course(program):
 	"""Return list of courses for a particular program
 	:param program: Program
 	"""
-	return frappe.get_all(
-		"Course",
-		filters={"program": program},
-		fields=["name as course", "course_name"],
-		order_by="course_name asc",
-	)
+	return [
+		{"course": row.course, "course_name": row.course_name}
+		for row in get_program_course_rows(program)
+		if row.course
+	]
 
 
 @frappe.whitelist()
@@ -544,12 +544,7 @@ def get_student_batches(student, program_name):
 
 @frappe.whitelist()
 def get_course_list_based_on_program(program_name: str):
-	return frappe.get_all(
-		"Course",
-		filters={"program": program_name},
-		pluck="name",
-		order_by="course_name asc",
-	)
+	return get_program_course_names(program_name)
 
 
 @frappe.whitelist()

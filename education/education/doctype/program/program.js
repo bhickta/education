@@ -2,6 +2,21 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Program', {
+  setup: function (frm) {
+    frm.set_query('course', 'courses', function (doc, cdt, cdn) {
+      let added = (doc.courses || [])
+        .filter((row) => row.name !== cdn && row.course)
+        .map((row) => row.course)
+
+      if (!added.length) return {}
+
+      return {
+        filters: {
+          name: ['not in', added],
+        },
+      }
+    })
+  },
   refresh: function (frm) {
     frm.trigger('set_filters')
   },

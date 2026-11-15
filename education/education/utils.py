@@ -3,6 +3,8 @@
 import frappe
 from frappe import _
 
+from education.education.program_courses import get_program_course_names
+
 
 class OverlapError(frappe.ValidationError):
 	pass
@@ -317,12 +319,7 @@ def get_course_progress(course, program):
 
 def get_program_progress(program):
 	program_progress = []
-	course_names = frappe.get_all(
-		"Course",
-		filters={"program": program.name},
-		pluck="name",
-		order_by="course_name asc",
-	)
+	course_names = get_program_course_names(program.name)
 	if not course_names:
 		return None
 	for course_name in course_names:
@@ -340,18 +337,21 @@ def get_program_progress(program):
 
 
 def get_program_completion(program):
-	topics = frappe.db.sql(
-		"""select `tabCourse Topic`.topic, `tabCourse Topic`.parent
-	from `tabCourse Topic`
-	inner join `tabCourse` on `tabCourse`.name = `tabCourse Topic`.parent
-	where `tabCourse`.program = %s""",
-		program.name,
+	course_names = get_program_course_names(program.name)
+	if not course_names:
+		return 0
+
+	topics = frappe.get_all(
+		"Course Topic",
+		filters={"parent": ("in", course_names)},
+		fields=["topic", "parent"],
+		order_by="parent, idx",
 	)
 
 	progress = []
 	for topic in topics:
-		topic_doc = frappe.get_doc("Topic", topic[0])
-		topic_progress = get_topic_progress(topic_doc, topic[1], program.name)
+		topic_doc = frappe.get_doc("Topic", topic.topic)
+		topic_progress = get_topic_progress(topic_doc, topic.parent, program.name)
 		if topic_progress:
 			progress.append(topic_progress)
 

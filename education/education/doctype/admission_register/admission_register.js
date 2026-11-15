@@ -71,16 +71,15 @@ frappe.ui.form.on('Admission Register', {
         .filter((row) => row.name !== cdn && row.course)
         .map((row) => row.course)
 
-      const filters = [
-        ['Course', 'program', '=', frm.doc.program],
-        ['Course', 'company', '=', frm.doc.company],
-      ]
-
-      if (selected_courses.length) {
-        filters.push(['Course', 'name', 'not in', selected_courses])
+      return {
+        query:
+          'education.education.doctype.program.program.get_program_courses',
+        filters: {
+          program: frm.doc.program,
+          company: frm.doc.company,
+          exclude_courses: selected_courses,
+        },
       }
-
-      return { filters }
     })
   },
 
