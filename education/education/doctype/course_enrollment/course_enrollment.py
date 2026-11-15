@@ -25,6 +25,10 @@ from education.education.doctype.fee_plan.fee_plan import (
 from education.education.doctype.student_batch_name.student_batch_name import (
 	validate_batch_capacity,
 )
+from education.education.program_courses import (
+	course_belongs_to_program,
+	get_program_for_course,
+)
 
 BILLING_NOT_APPLICABLE = "Not Applicable"
 BILLING_PENDING = "Pending"
@@ -42,8 +46,11 @@ RETRYABLE_BILLING_STATUSES = (
 class CourseEnrollment(Document):
 	def validate(self):
 		self.set_program_from_course()
+		self.set_academic_year_from_register()
 		self.set_fee_term_from_course()
 		self.set_academic_term_from_register()
+		self.validate_program()
+		self.validate_course_curriculum()
 		self.validate_admission_register()
 		self.validate_duplication()
 		self.validate_batch()
@@ -287,11 +294,25 @@ class CourseEnrollment(Document):
 		self.db_set("fee_plan", None)
 
 	def set_program_from_course(self):
-		if not self.course:
-			self.program = None
+		"""Default the programme only when a course is offered by exactly one programme.
+
+		The programme is an explicit field. Never clear or overwrite a saved value
+		when the course is changed or left empty.
+		"""
+		if self.program or not self.course:
 			return
 
-		self.program = frappe.db.get_value("Course", self.course, "program")
+		program = get_program_for_course(self.course)
+		if program:
+			self.program = program
+
+	def set_academic_year_from_register(self):
+		if self.academic_year or not self.admission_register:
+			return
+
+		self.academic_year = frappe.db.get_value(
+			"Admission Register", self.admission_register, "academic_year"
+		)
 
 	def set_fee_term_from_course(self):
 		if self.fee_term or not self.course:
@@ -307,6 +328,25 @@ class CourseEnrollment(Document):
 		self.academic_term = frappe.db.get_value(
 			"Admission Register", self.admission_register, "academic_term"
 		)
+
+	def validate_program(self):
+		if not self.program:
+			frappe.throw(_("Program is mandatory for a course enrollment."))
+
+		if not frappe.db.exists("Program", self.program):
+			frappe.throw(_("Program {0} does not exist.").format(frappe.bold(self.program)))
+
+	def validate_course_curriculum(self):
+		if not (self.program and self.course):
+			return
+
+		if not course_belongs_to_program(self.program, self.course):
+			frappe.throw(
+				_("Course {0} is not part of the curriculum of Program {1}.").format(
+					frappe.bold(self.course),
+					frappe.bold(self.program),
+				)
+			)
 
 	def validate_admission_register(self):
 		register = frappe.db.get_value(
@@ -361,18 +401,31 @@ class CourseEnrollment(Document):
 			return []
 
 	def validate_batch(self):
-		"""Ensure the batch belongs to the enrolled course and still has room."""
+		"""Ensure the batch belongs to the enrolled programme and still has room."""
 		if not self.student_batch:
 			return
 
 		batch = frappe.db.get_value(
 			"Student Batch Name",
 			self.student_batch,
-			["course", "disabled"],
+			["course", "program", "disabled"],
 			as_dict=True,
 		)
+		if not batch:
+			frappe.throw(_("Student Batch {0} does not exist.").format(frappe.bold(self.student_batch)))
 
-		if batch.course != self.course:
+		if batch.program and self.program and batch.program != self.program:
+			frappe.throw(
+				_("Batch {0} belongs to Program {1}, not to Program {2}.").format(
+					frappe.bold(self.student_batch),
+					frappe.bold(batch.program),
+					frappe.bold(self.program),
+				)
+			)
+
+		# A legacy batch may still be tied to one course. New batches leave this blank
+		# and accept any course from the programme curriculum.
+		if batch.course and batch.course != self.course:
 			frappe.throw(
 				_("Batch {0} belongs to Course {1}, not to Course {2}.").format(
 					frappe.bold(self.student_batch),
@@ -585,6 +638,12 @@ class CourseEnrollment(Document):
 
 			activity.insert(ignore_permissions=True)
 			return activity.name
+
+
+@frappe.whitelist()
+def get_default_program(course: str):
+	"""Return the programme for a course only when it is unambiguous."""
+	return get_program_for_course(course)
 
 
 @frappe.whitelist()

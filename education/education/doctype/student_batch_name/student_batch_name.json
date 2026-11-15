@@ -8,8 +8,9 @@
  "engine": "InnoDB",
  "field_order": [
   "batch_name",
-  "course",
   "program",
+  "course",
+  "academic_year",
   "max_strength",
   "disabled",
   "column_break_advy",
@@ -28,47 +29,29 @@
    "unique": 1
   },
   {
-   "fieldname": "start_date",
-   "fieldtype": "Date",
-   "label": "Start Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "end_date",
-   "fieldtype": "Date",
-   "label": "End Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "course",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Course",
-   "options": "Course",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "course.program",
    "fieldname": "program",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Program",
    "options": "Program",
-   "read_only": 1
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Programme this batch belongs to. A batch can cover any course in the programme curriculum."
   },
   {
-   "fetch_from": "course.company",
-   "fieldname": "company",
+   "fieldname": "course",
    "fieldtype": "Link",
-   "label": "Company",
-   "options": "Company",
-   "read_only": 1,
-   "reqd": 1
+   "in_standard_filter": 1,
+   "label": "Course",
+   "options": "Course",
+   "description": "Optional and deprecated: batches now belong to a programme and can cover multiple courses."
   },
   {
-   "fieldname": "column_break_advy",
-   "fieldtype": "Column Break"
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Academic Year",
+   "options": "Academic Year"
   },
   {
    "description": "Maximum number of students that can be enrolled in this batch. Leave as 0 for no limit.",
@@ -81,6 +64,30 @@
    "fieldname": "disabled",
    "fieldtype": "Check",
    "label": "Disabled"
+  },
+  {
+   "fieldname": "column_break_advy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date",
+   "reqd": 1
   },
   {
    "fieldname": "connections_tab",
@@ -152,7 +159,7 @@
    "link_fieldname": "student_batch"
   }
  ],
- "modified": "2026-10-30 13:28:05.016103",
+ "modified": "2026-11-15 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Student Batch Name",

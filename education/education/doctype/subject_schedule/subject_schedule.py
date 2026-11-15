@@ -11,11 +11,13 @@ from frappe.utils import formatdate, get_time, getdate
 
 from education.education.doctype.campus.campus import apply_room_campus
 from education.education.doctype.faculty.faculty import faculty_teaches_subject
+from education.education.program_courses import course_belongs_to_program
 
 
 class SubjectSchedule(Document):
 	def validate(self):
 		self.set_faculty_name()
+		self.set_program_from_batch()
 		self.validate_course()
 		self.validate_subject()
 		self.validate_faculty()
@@ -41,11 +43,34 @@ class SubjectSchedule(Document):
 		else:
 			self.title = subject or faculty or self.student_batch
 
+	def set_program_from_batch(self):
+		batch_program = frappe.db.get_value("Student Batch Name", self.student_batch, "program")
+		if not batch_program:
+			frappe.throw(
+				_("Student Batch {0} does not have a Program.").format(frappe.bold(self.student_batch))
+			)
+
+		self.program = batch_program
+
 	def validate_course(self):
-		"""A batch belongs to a single course, so the course follows the batch."""
-		course = frappe.db.get_value("Student Batch Name", self.student_batch, "course")
-		if course:
-			self.course = course
+		"""The course is chosen from the batch programme, not copied from the batch."""
+		batch_course = frappe.db.get_value("Student Batch Name", self.student_batch, "course")
+		if batch_course and self.course and batch_course != self.course:
+			frappe.throw(
+				_("Batch {0} belongs to Course {1}, not to Course {2}.").format(
+					frappe.bold(self.student_batch),
+					frappe.bold(batch_course),
+					frappe.bold(self.course),
+				)
+			)
+
+		if self.course and not course_belongs_to_program(self.program, self.course):
+			frappe.throw(
+				_("Course {0} is not part of the curriculum of Program {1}.").format(
+					frappe.bold(self.course),
+					frappe.bold(self.program),
+				)
+			)
 
 	def validate_subject(self):
 		if not (self.subject and self.course):

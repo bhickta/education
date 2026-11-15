@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "student_batch",
+  "program",
   "faculty",
   "faculty_name",
   "column_break_2",
@@ -34,6 +35,16 @@
    "label": "Student Batch",
    "options": "Student Batch Name",
    "reqd": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1,
+   "reqd": 1,
+   "description": "Derived from the student batch. Courses must belong to this programme curriculum."
   },
   {
    "fieldname": "faculty",
@@ -63,14 +74,13 @@
    "set_only_once": 1
   },
   {
-   "fetch_from": "student_batch.course",
    "fieldname": "course",
    "fieldtype": "Link",
    "in_global_search": 1,
    "label": "Course",
    "options": "Course",
-   "read_only": 1,
-   "reqd": 1
+   "reqd": 1,
+   "description": "Course from the batch programme curriculum."
   },
   {
    "fieldname": "subject",
@@ -86,6 +96,14 @@
    "fieldtype": "Color",
    "hidden": 1,
    "label": "Color",
+   "print_hide": 1
+  },
+  {
+   "default": "blue",
+   "fieldname": "class_schedule_color",
+   "fieldtype": "Select",
+   "label": "Class Schedule Color",
+   "options": "blue\ngreen\nred\norange\nyellow\nteal\nviolet\ncyan\namber\npink\npurple",
    "print_hide": 1
   },
   {
@@ -137,18 +155,10 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Title"
-  },
-  {
-   "default": "blue",
-   "fieldname": "class_schedule_color",
-   "fieldtype": "Select",
-   "label": "Class Schedule Color",
-   "options": "blue\ngreen\nred\norange\nyellow\nteal\nviolet\ncyan\namber\npink\npurple",
-   "print_hide": 1
   }
  ],
  "links": [],
- "modified": "2026-09-29 20:19:08.878657",
+ "modified": "2026-11-15 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Subject Schedule",

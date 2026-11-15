@@ -80,3 +80,49 @@ to the programme-course pair, not the course master.
 Phase 2 does **not** change Student Batch or Course Enrollment semantics. Their
 program fields continue to follow `Course.program`; the batch/enrollment
 migration is the next phase.
+
+### Phase 3 — batch and enrollment semantics
+
+A programme can offer many courses, so a batch belongs to a programme and no
+longer to a single course. Course Enrollment carries its own programme and
+academic year. The legacy course links stay readable for existing records but
+are no longer required or used to derive the programme.
+
+| Area | Fork behaviour | Upstream merge rule |
+| --- | --- | --- |
+| `Student Batch Name.program` | Required, editable Link to `Program`; never fetched from `Course`. | Keep it independent of `Course.program`. |
+| `Student Batch Name.course` | Optional and deprecated. A batch can cover any course in its programme curriculum. | Do not make it required again. |
+| `Student Batch Name.academic_year` | Standard fork field, used by the legacy group migration. | Keep it; it is not a custom field. |
+| `Student Batch Name.company` | Defaulted on single-company sites and hidden by the form when only one Company exists. | Keep `Company` consistency validation on multi-company sites. |
+| `Student Batch Name.validate()` | Requires the programme, accepts a blank course, checks `(program, course)` through `Program Course`, and validates dates, capacity and company. | Keep these checks if upstream adds its own batch validation. |
+| `Course Enrollment.program` | Explicit required Link, editable, never overwritten from `Course.program`. | Never restore `fetch_from`/`read_only` or a blanking `set_program_from_course()`. |
+| `Course Enrollment.academic_year` | Standard Link field, fetched from the Admission Register when blank and required for new records. | Keep the field; do not rely on a site custom field. |
+| Course Enrollment validation | `(program, course)` must be in `Program Course`; a batch must have the same programme; a legacy batch course must match; capacity, admission register and fee term checks stay. | Preserve all existing checks. |
+| Programme default | Filled only when exactly one programme offers the course (`get_program_for_course`). Ambiguous courses require an explicit choice. | Keep the conservative default; never guess among multiple programmes. |
+| `Subject Schedule` / `Assessment Plan` | Add a read-only `program` derived from the batch. `course` is chosen by the user, not fetched from `student_batch.course`, and must be in the programme curriculum. | Keep the derived programme and curriculum check through upstream schema changes. |
+| Migration | `education/patches/v17_0/migrate_batches_and_enrollments.py` creates/normalises batches from legacy `Student Group`, backfills blank enrollment batch/programme/year from `Program Enrollment`/`Student Group`, and corrects a historical year only when the stored year cannot contain the enrollment date. | Append follow-up patches; do not renumber or remove the patch after deployment. |
+
+Migration assumptions:
+
+- It never submits Course Enrollments, creates fees, or deletes or rewrites
+  legacy `Student Group` / `Program Enrollment` rows.
+- Existing programme, batch, academic year, company and capacity values are
+  kept. Only blank fields are filled.
+- Legacy tables and columns are detected individually, so the patch is a no-op
+  on sites without those tables and on partially migrated databases.
+- `run(dry_run=True)` returns the planned counts without writing.
+- A batch is created from a legacy group only when the group has a programme,
+  a company (explicit or the single default Company) and an academic year with
+  start/end dates. Ambiguous academic years or companies are skipped.
+- `Student Group` rows linked to an existing `batch` normalise that batch;
+  other rows use the group name. Existing batches are never renamed.
+- The patch is idempotent: a second run finds no blank fields to fill.
+
+Tests live in `test_student_batch_name.py` and `test_course_enrollment.py` and
+cover the schema contract, conservative programme defaults, batch planning, and
+academic-year backfill helpers.
+
+Still deferred to Phase 4/5: dropping `Course.program`, removing Himguru custom
+fields, rewriting Grade Book programme handling, reworking the Subject
+Scheduling Tool and Student Attendance Tool for multi-course batches, and any
+data cleanup that requires a destructive migration.

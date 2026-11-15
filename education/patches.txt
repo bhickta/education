@@ -25,3 +25,4 @@ education.patches.v17_0.create_default_floors
 education.patches.v17_0.set_faculty_title_from_salutation
 education.patches.v17_0.move_instructors_to_faculty
 education.patches.v17_0.restore_program_courses
+education.patches.v17_0.migrate_batches_and_enrollments

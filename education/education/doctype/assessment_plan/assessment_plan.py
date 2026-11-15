@@ -8,16 +8,48 @@ from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
 from education.education.doctype.campus.campus import apply_room_campus
+from education.education.program_courses import course_belongs_to_program
 
 
 class AssessmentPlan(Document):
 	def validate(self):
 		apply_room_campus(self)
+		self.set_program_from_batch()
+		self.validate_course()
 		self.validate_overlap()
 		self.validate_max_score()
 		self.validate_subject()
 		self.validate_academic_year_and_term()
 		self.validate_company()
+
+	def set_program_from_batch(self):
+		batch_program = frappe.db.get_value("Student Batch Name", self.student_batch, "program")
+		if not batch_program:
+			frappe.throw(
+				_("Student Batch {0} does not have a Program.").format(frappe.bold(self.student_batch))
+			)
+
+		self.program = batch_program
+
+	def validate_course(self):
+		"""The course is chosen from the batch programme, not copied from the batch."""
+		batch_course = frappe.db.get_value("Student Batch Name", self.student_batch, "course")
+		if batch_course and self.course and batch_course != self.course:
+			frappe.throw(
+				_("Batch {0} belongs to Course {1}, not to Course {2}.").format(
+					frappe.bold(self.student_batch),
+					frappe.bold(batch_course),
+					frappe.bold(self.course),
+				)
+			)
+
+		if self.course and not course_belongs_to_program(self.program, self.course):
+			frappe.throw(
+				_("Course {0} is not part of the curriculum of Program {1}.").format(
+					frappe.bold(self.course),
+					frappe.bold(self.program),
+				)
+			)
 
 	def validate_subject(self):
 		if not (self.subject and self.course):
@@ -95,6 +127,7 @@ class AssessmentPlan(Document):
 
 		for doctype, value in (
 			("Student Batch Name", self.student_batch),
+			("Program", self.program),
 			("Course", self.course),
 			("Academic Year", self.academic_year),
 			("Academic Term", self.academic_term),

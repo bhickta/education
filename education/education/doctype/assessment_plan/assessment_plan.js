@@ -17,6 +17,16 @@ frappe.ui.form.on('Assessment Plan', {
         },
       }
     })
+    frm.set_query('course', function () {
+      if (!frm.doc.program) return {}
+      return {
+        query:
+          'education.education.doctype.program.program.get_program_courses',
+        filters: {
+          program: frm.doc.program,
+        },
+      }
+    })
     set_academic_queries(frm)
     set_room_query(frm)
     set_default_academic_year(frm)
@@ -46,6 +56,28 @@ frappe.ui.form.on('Assessment Plan', {
     set_academic_queries(frm)
     set_room_query(frm)
     set_default_academic_year(frm)
+  },
+
+  student_batch: function (frm) {
+    if (frm.doc.subject) {
+      frm.set_value('subject', '')
+    }
+    frm.set_value('course', null)
+
+    if (!frm.doc.student_batch) return
+
+    frappe.db
+      .get_value('Student Batch Name', frm.doc.student_batch, [
+        'program',
+        'course',
+      ])
+      .then((r) => {
+        const batch = r.message || {}
+        frm.set_value('program', batch.program || null)
+        if (batch.course) {
+          frm.set_value('course', batch.course)
+        }
+      })
   },
 
   company: function (frm) {

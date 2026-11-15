@@ -14,6 +14,10 @@ from education.education.doctype.admission_register.admission_register import (
 from education.education.doctype.student_batch_name.student_batch_name import (
 	validate_batch_capacity,
 )
+from education.education.program_courses import (
+	course_belongs_to_program,
+	get_program_for_course,
+)
 
 STUDENT_FIELDS = (
 	"first_name",
@@ -246,18 +250,26 @@ class StudentApplicant(Document):
 		batch = frappe.db.get_value(
 			"Student Batch Name",
 			self.student_batch,
-			["course", "disabled"],
+			["course", "program", "disabled"],
 			as_dict=True,
 		)
 		if not batch:
 			frappe.throw(_("Student Batch {0} does not exist.").format(frappe.bold(self.student_batch)))
 
-		if self.course and batch.course != self.course:
+		if self.course and batch.course and batch.course != self.course:
 			frappe.throw(
 				_("Batch {0} belongs to Course {1}, not to Course {2}.").format(
 					frappe.bold(self.student_batch),
 					frappe.bold(batch.course),
 					frappe.bold(self.course),
+				)
+			)
+
+		if self.course and batch.program and not course_belongs_to_program(batch.program, self.course):
+			frappe.throw(
+				_("Course {0} is not part of the curriculum of Program {1}.").format(
+					frappe.bold(self.course),
+					frappe.bold(batch.program),
 				)
 			)
 
@@ -400,13 +412,18 @@ class StudentApplicant(Document):
 		if not self.course:
 			frappe.throw(_("Please select a Course to enroll the student in."))
 
+		batch_program = frappe.db.get_value("Student Batch Name", self.student_batch, "program")
+		register_program = frappe.db.get_value("Admission Register", self.admission_register, "program")
+		program = batch_program or register_program or get_program_for_course(self.course)
 		course_enrollment = frappe.get_doc(
 			{
 				"doctype": "Course Enrollment",
 				"student": self.student,
 				"course": self.course,
+				"program": program,
 				"company": self.company,
 				"admission_register": self.admission_register,
+				"academic_year": self.academic_year,
 				"academic_term": self.academic_term,
 				"enrollment_date": today(),
 				"fee_term": self.fee_term,

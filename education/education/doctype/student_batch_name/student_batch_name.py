@@ -6,30 +6,79 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, getdate
 
+from education.education.program_courses import (
+	course_belongs_to_program,
+	is_multi_company,
+)
+
 
 class StudentBatchName(Document):
 	def validate(self):
+		self.set_default_company()
+		self.validate_program()
+		self.validate_course()
 		self.validate_dates()
 		self.validate_company()
 		self.validate_strength()
+
+	def set_default_company(self):
+		"""Default the company on single-company sites without overriding a choice."""
+		if self.company:
+			return
+
+		companies = frappe.get_all("Company", pluck="name", limit=2)
+		if len(companies) == 1:
+			self.company = companies[0]
+
+	def validate_program(self):
+		if not self.program:
+			frappe.throw(_("Program is mandatory for a batch."))
+
+		if not frappe.db.exists("Program", self.program):
+			frappe.throw(_("Program {0} does not exist.").format(frappe.bold(self.program)))
+
+	def validate_course(self):
+		"""A batch belongs to a programme; the legacy course link is optional."""
+		if not self.course:
+			return
+
+		if not frappe.db.exists("Course", self.course):
+			frappe.throw(_("Course {0} does not exist.").format(frappe.bold(self.course)))
+
+		if not course_belongs_to_program(self.program, self.course):
+			frappe.throw(
+				_("Course {0} is not part of the curriculum of Program {1}.").format(
+					frappe.bold(self.course),
+					frappe.bold(self.program),
+				)
+			)
 
 	def validate_dates(self):
 		if self.start_date and self.end_date and getdate(self.end_date) < getdate(self.start_date):
 			frappe.throw(_("End Date cannot be before Start Date"))
 
 	def validate_company(self):
-		if not self.course:
+		"""Keep programme and legacy course companies consistent on multi-company sites."""
+		if not self.company or not is_multi_company():
 			return
 
-		course_company = frappe.db.get_value("Course", self.course, "company")
-		if course_company and self.company and course_company != self.company:
-			frappe.throw(
-				_("Company {0} does not match the Company {1} of Course {2}").format(
-					frappe.bold(self.company),
-					frappe.bold(course_company),
-					frappe.bold(self.course),
+		for doctype, value in (
+			("Program", self.program),
+			("Course", self.course),
+		):
+			if not value:
+				continue
+
+			company = frappe.db.get_value(doctype, value, "company")
+			if company and company != self.company:
+				frappe.throw(
+					_("Company {0} does not match the Company {1} of {2} {3}").format(
+						frappe.bold(self.company),
+						frappe.bold(company),
+						_(doctype),
+						frappe.bold(value),
+					)
 				)
-			)
 
 	def validate_strength(self):
 		if cint(self.max_strength) < 0:

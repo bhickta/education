@@ -36,7 +36,7 @@ frappe.ui.form.on('Student Applicant', {
     frm.set_query('student_batch', function () {
       return {
         filters: {
-          course: frm.doc.course,
+          disabled: 0,
         },
       }
     })
@@ -87,7 +87,7 @@ frappe.ui.form.on('Student Applicant', {
     frm.set_query('student_batch', function () {
       return {
         filters: {
-          course: frm.doc.course,
+          disabled: 0,
         },
       }
     })

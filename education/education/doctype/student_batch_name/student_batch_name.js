@@ -3,6 +3,19 @@
 
 frappe.ui.form.on('Student Batch Name', {
   refresh: function (frm) {
+    set_company_visibility(frm)
+    frm.set_query('course', function () {
+      if (!frm.doc.program) return {}
+      return {
+        query:
+          'education.education.doctype.program.program.get_program_courses',
+        filters: {
+          program: frm.doc.program,
+          company: frm.doc.company,
+        },
+      }
+    })
+
     if (!frm.is_new()) {
       frm.add_custom_button(__('Students'), function () {
         frappe.set_route('List', 'Course Enrollment', {
@@ -67,4 +80,26 @@ frappe.ui.form.on('Student Batch Name', {
       )
     }
   },
+
+  program: function (frm) {
+    if (frm.doc.course) {
+      frm.set_value('course', null)
+    }
+  },
 })
+
+function set_company_visibility(frm) {
+  frappe.db.count('Company').then((count) => {
+    const single_company = count <= 1
+    frm.toggle_display('company', !single_company)
+
+    if (!single_company || frm.doc.company) return
+
+    const company =
+      frappe.defaults.get_default('company') ||
+      (frappe.boot.sysdefaults && frappe.boot.sysdefaults.company)
+    if (company) {
+      frm.set_value('company', company)
+    }
+  })
+}

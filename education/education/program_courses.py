@@ -76,6 +76,22 @@ def get_program_course_names(program_name: str, include_inactive: bool = False) 
 	return names
 
 
+def course_belongs_to_program(program_name: str, course: str, include_inactive: bool = True) -> bool:
+	"""Return True when the course is part of the programme curriculum.
+
+	The check reads ``Program.courses`` first and falls back to ``Course.program``
+	for sites that have not run the curriculum migration yet. Inactive curriculum
+	rows still count as membership so historical enrollments remain valid.
+	"""
+	if not program_name or not course:
+		return False
+
+	if not frappe.db.exists("Program", program_name) or not frappe.db.exists("Course", course):
+		return False
+
+	return course in get_program_course_names(program_name, include_inactive=include_inactive)
+
+
 def get_programs_for_course(course: str) -> list[str]:
 	"""Return every programme linked to a course through either compatibility path."""
 	if not course:

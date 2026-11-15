@@ -23,7 +23,7 @@ frappe.ui.form.on('Course Enrollment', {
     frm.set_query('student_batch', function () {
       return {
         filters: {
-          course: frm.doc.course,
+          program: frm.doc.program,
           disabled: 0,
         },
       }
@@ -92,6 +92,23 @@ frappe.ui.form.on('Course Enrollment', {
     frm.set_value('student_batch', null)
     frm.set_value('roll_number', null)
     frm.trigger('fetch_fee_term')
+    frm.trigger('fetch_default_program')
+  },
+
+  fetch_default_program: function (frm) {
+    if (!frm.doc.course) return
+
+    frappe
+      .call({
+        method:
+          'education.education.doctype.course_enrollment.course_enrollment.get_default_program',
+        args: { course: frm.doc.course },
+      })
+      .then((r) => {
+        if (r.message && r.message !== frm.doc.program) {
+          frm.set_value('program', r.message)
+        }
+      })
   },
 
   student_batch: function (frm) {
@@ -108,6 +125,11 @@ frappe.ui.form.on('Course Enrollment', {
           frm.set_value('roll_number', r.message)
         }
       })
+  },
+
+  program: function (frm) {
+    frm.set_value('student_batch', null)
+    frm.set_value('roll_number', null)
   },
 
   company: function (frm) {

@@ -151,15 +151,37 @@ def create_student(first_name="Test", last_name="Student", student_email_id=DEFA
 def create_student_batch(
 	batch_name=DEFAULT_STUDENT_BATCH,
 	course=DEFAULT_COURSE,
+	program=None,
 	start_date="2023-04-01",
 	end_date="2024-03-31",
 ):
 	if frappe.db.exists("Student Batch Name", batch_name):
 		return frappe.get_doc("Student Batch Name", batch_name)
 
+	program = (
+		program
+		or frappe.db.get_value("Course", course, "program")
+		or frappe.db.get_value("Program", {}, "name")
+	)
+	company = frappe.db.get_value("Course", course, "company") or frappe.db.get_value("Company", {}, "name")
+	if (
+		program
+		and course
+		and not frappe.db.exists(
+			"Program Course",
+			{"parent": program, "parenttype": "Program", "parentfield": "courses", "course": course},
+		)
+	):
+		program_doc = frappe.get_doc("Program", program)
+		program_doc.append("courses", {"course": course, "required": 1})
+		program_doc.flags.ignore_mandatory = True
+		program_doc.save()
+
 	student_batch = frappe.new_doc("Student Batch Name")
 	student_batch.batch_name = batch_name
+	student_batch.program = program
 	student_batch.course = course
+	student_batch.company = company
 	student_batch.start_date = start_date
 	student_batch.end_date = end_date
 	student_batch.save()

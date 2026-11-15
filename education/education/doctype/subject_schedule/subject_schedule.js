@@ -19,6 +19,16 @@ frappe.ui.form.on('Subject Schedule', {
         },
       }
     })
+    frm.set_query('course', function () {
+      if (!frm.doc.program) return {}
+      return {
+        query:
+          'education.education.doctype.program.program.get_program_courses',
+        filters: {
+          program: frm.doc.program,
+        },
+      }
+    })
     set_subject_query(frm)
     set_faculty_query(frm)
   },
@@ -27,6 +37,24 @@ frappe.ui.form.on('Subject Schedule', {
     if (frm.doc.subject) {
       frm.set_value('subject', '')
     }
+    frm.set_value('course', null)
+
+    if (frm.doc.student_batch) {
+      frappe.db
+        .get_value('Student Batch Name', frm.doc.student_batch, [
+          'program',
+          'course',
+        ])
+        .then((r) => {
+          const batch = (r.message || {})[frm.doc.student_batch] || r.message
+          if (!batch) return
+          frm.set_value('program', batch.program || null)
+          if (batch.course) {
+            frm.set_value('course', batch.course)
+          }
+        })
+    }
+
     set_subject_query(frm)
     set_faculty_query(frm)
   },
