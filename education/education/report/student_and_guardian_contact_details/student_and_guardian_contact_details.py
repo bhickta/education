@@ -144,10 +144,16 @@ def get_columns():
 
 def get_student_details(student_list):
 	student_map = frappe._dict()
+	placeholders = ", ".join(["%s"] * len(student_list))
 	student_details = frappe.db.sql(
-		"""
-		select name, student_mobile_number, student_email_id, address_line_1, address_line_2, city, state from `tabStudent` where name in (%s)"""
-		% ", ".join(["%s"] * len(student_list)),
+		f"""
+		select s.name,
+			coalesce(nullif(c.mobile_no, ''), s.student_mobile_number) as student_mobile_number,
+			coalesce(nullif(c.email_id, ''), s.student_email_id) as student_email_id,
+			s.address_line_1, s.address_line_2, s.city, s.state
+		from `tabStudent` s
+		left join `tabContact` c on c.name = s.primary_contact
+		where s.name in ({placeholders})""",
 		tuple(student_list),
 		as_dict=1,
 	)

@@ -205,6 +205,11 @@ after_install = "education.install.after_install"
 # Hook on document methods and events
 
 doc_events = {
+	"Contact": {
+		"on_update": (
+			"education.education.doctype.student.student_contact.update_linked_students_from_contact"
+		),
+	},
 	"Payment Entry": {
 		"on_submit": "education.overrides.payment_entry.on_payment_entry_submit",
 		"on_cancel": "education.overrides.payment_entry.on_payment_entry_cancel",

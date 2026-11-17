@@ -10,12 +10,30 @@ from frappe.model.document import Document
 from frappe.utils import getdate, today
 from frappe.utils.nestedset import get_root_of
 
+from education.education.doctype.student.student_contact import (
+	ensure_primary_address,
+	ensure_primary_contact,
+	sync_contact_mirror_fields,
+)
 from education.education.utils import check_content_completion, check_quiz_completion
 
 
 class Student(Document):
+	def onload(self):
+		"""Load linked Contact/Address cards and refresh the compatibility mirrors."""
+		from frappe.contacts.address_and_contact import load_address_and_contact
+
+		load_address_and_contact(self)
+		sync_contact_mirror_fields(self)
+
 	def validate(self):
 		self.set_title()
+		# The primary Contact is the editable source. Create it from legacy
+		# email/mobile once, then mirror its values onto the hidden columns so
+		# searches, reports, portals and print formats keep working.
+		ensure_primary_contact(self)
+		ensure_primary_address(self)
+		sync_contact_mirror_fields(self)
 		self.validate_dates()
 		self.validate_user()
 

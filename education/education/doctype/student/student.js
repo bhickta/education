@@ -11,6 +11,10 @@ frappe.ui.form.on('Student', {
       }
     })
 
+    if (!frm.is_new() && frappe.contacts) {
+      frappe.contacts.render_address_and_contact(frm)
+    }
+
     if (!frm.is_new()) {
       frm.add_custom_button(__('Accounting Ledger'), function () {
         frappe.set_route('query-report', 'General Ledger', {

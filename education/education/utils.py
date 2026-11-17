@@ -91,8 +91,15 @@ def get_current_student():
 	email = frappe.session.user
 	if email in ("Administrator", "Guest"):
 		return None
+	student_id = None
 	try:
-		student_id = frappe.get_all("Student", {"student_email_id": email}, ["name"])[0].name
+		from education.education.doctype.student.student_contact import (
+			get_student_by_email,
+		)
+
+		student_id = get_student_by_email(email)
+		if not student_id:
+			return None
 		return frappe.get_doc("Student", student_id)
 	except (IndexError, frappe.DoesNotExistError):
 		return None

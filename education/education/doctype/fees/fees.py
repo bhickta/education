@@ -18,6 +18,10 @@ from education.education.doctype.campus.campus import (
 	set_campus_from_enrollment,
 	validate_campus,
 )
+from education.education.doctype.student.student_contact import (
+	get_student_by_email,
+	get_student_primary_email,
+)
 
 
 class Fees(AccountsController):
@@ -79,7 +83,7 @@ class Fees(AccountsController):
 			self.student,
 		)
 
-		student_email_id = frappe.db.get_value("Student", self.student, "student_email_id")
+		student_email_id = get_student_primary_email(self.student)
 		if student_email_id:
 			student_emails.append(student_email_id)
 		if student_emails:
@@ -156,7 +160,7 @@ class Fees(AccountsController):
 
 def get_fee_list(doctype, txt, filters, limit_start, limit_page_length=20, order_by="modified"):
 	user = frappe.session.user
-	student = frappe.db.sql("select name from `tabStudent` where student_email_id= %s", user)
+	student = get_student_by_email(user)
 	if student:
 		return frappe.db.sql(
 			"""
@@ -166,7 +170,7 @@ def get_fee_list(doctype, txt, filters, limit_start, limit_page_length=20, order
 			where student= %s and docstatus=1
 			order by due_date asc limit %s, %s
 			""",
-			(student[0][0], cint(limit_start), cint(limit_page_length)),
+			(student, cint(limit_start), cint(limit_page_length)),
 			as_dict=True,
 		)
 

@@ -19,17 +19,23 @@
   "naming_series",
   "joining_date",
   "user",
-  "student_email_id",
   "image",
   "section_break_7",
   "email_address",
   "date_of_birth",
   "blood_group",
   "column_break_3",
-  "student_mobile_number",
   "gender",
   "nationality",
   "address_tab",
+  "section_break_primary_contact",
+  "primary_contact",
+  "column_break_primary_contact",
+  "primary_address",
+  "section_break_contact_cards",
+  "contact_html",
+  "column_break_contact_cards",
+  "address_html",
   "section_break_22",
   "address_line_1",
   "address_line_2",
@@ -114,17 +120,24 @@
    "set_only_once": 1
   },
   {
+   "description": "Derived from the Primary Contact email. Kept for reports, portals, search and print formats; edit the Primary Contact instead.",
    "fieldname": "student_email_id",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_global_search": 1,
    "label": "Student Email Address",
-   "unique": 1
+   "no_copy": 1,
+   "read_only": 1
   },
   {
+   "description": "Derived from the Primary Contact phone. Kept for reports, portals, search and print formats; edit the Primary Contact instead.",
    "fieldname": "student_mobile_number",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_global_search": 1,
-   "label": "Student Mobile Number"
+   "label": "Student Mobile Number",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "default": "Today",
@@ -351,6 +364,54 @@
    "fieldname": "alumni",
    "fieldtype": "Check",
    "label": "Alumni?"
+  },
+  {
+   "description": "Default contact used on documents, certificates and receipts. Manage linked contacts in the cards below.",
+   "fieldname": "section_break_primary_contact",
+   "fieldtype": "Section Break",
+   "label": "Primary Contact & Address"
+  },
+  {
+   "description": "Select the contact used on documents. Leave blank to keep legacy contact values.",
+   "fieldname": "primary_contact",
+   "fieldtype": "Link",
+   "label": "Primary Contact",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "column_break_primary_contact",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Select the address used on documents. Manage all linked addresses below.",
+   "fieldname": "primary_address",
+   "fieldtype": "Link",
+   "label": "Primary Address",
+   "options": "Address"
+  },
+  {
+   "description": "All Contacts and Addresses linked to this Student.",
+   "fieldname": "section_break_contact_cards",
+   "fieldtype": "Section Break",
+   "label": "Linked Contacts & Addresses"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "contact_html",
+   "fieldtype": "HTML",
+   "label": "Contacts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_contact_cards",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "address_html",
+   "fieldtype": "HTML",
+   "label": "Addresses",
+   "read_only": 1
   }
  ],
  "image_field": "image",
@@ -386,7 +447,7 @@
    "link_fieldname": "student"
   }
  ],
- "modified": "2026-10-30 13:28:05.016103",
+ "modified": "2026-11-17 22:00:00.000000",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Student",
