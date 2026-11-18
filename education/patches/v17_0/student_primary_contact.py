@@ -57,7 +57,7 @@ def execute() -> None:
 		if frappe.db.has_column(STUDENT, fieldname)
 	]
 
-	for row in frappe.get_all(STUDENT, fields=fields, as_dict=True):
+	for row in frappe.get_all(STUDENT, fields=fields):
 		contact = ensure_primary_contact(row)
 		address = ensure_primary_address(row)
 
