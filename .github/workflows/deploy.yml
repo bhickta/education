@@ -1,0 +1,189 @@
+name: Deploy Education
+
+on:
+  push:
+    branches:
+      - himguru
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.jpeg"
+      - "**/*.gif"
+      - "**/*.svg"
+      - "license.txt"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/linters.yml"
+      - ".github/workflows/builds.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CODEDEPLOY_APP_NAME: Education-App
+  CODEDEPLOY_GROUP_NAME: Education-Live-Group
+  S3_FOLDER_PREFIX: education
+
+concurrency:
+  group: deploy-education-live
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy live
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: education-live
+      url: https://apsrohru.erp.himguru.in
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        run: yarn --cwd frontend install --frozen-lockfile
+
+      - name: Build frontend
+        run: yarn --cwd frontend build
+
+      - name: Analyze commit flags
+        id: flags
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message || '' }}
+        run: |
+          set -euo pipefail
+
+          SKIP_BUILD="false"
+          SKIP_MIGRATE="false"
+          SKIP_RESTART="false"
+          SKIP_BACKUP="false"
+
+          if [[ "$COMMIT_MSG" == *"[skip build]"* ]]; then SKIP_BUILD="true"; fi
+          if [[ "$COMMIT_MSG" == *"[skip migrate]"* ]]; then SKIP_MIGRATE="true"; fi
+          if [[ "$COMMIT_MSG" == *"[skip restart]"* ]]; then SKIP_RESTART="true"; fi
+          if [[ "$COMMIT_MSG" == *"[skip backup]"* ]]; then SKIP_BACKUP="true"; fi
+
+          if [[ "$COMMIT_MSG" == *"[restart only]"* ]]; then
+            SKIP_BUILD="true"
+            SKIP_MIGRATE="true"
+            SKIP_BACKUP="true"
+          fi
+
+          {
+            echo "export SKIP_BUILD=$SKIP_BUILD"
+            echo "export SKIP_MIGRATE=$SKIP_MIGRATE"
+            echo "export SKIP_RESTART=$SKIP_RESTART"
+            echo "export SKIP_BACKUP=$SKIP_BACKUP"
+            echo "export DEPLOY_SHA=$GITHUB_SHA"
+          } > .deploy_config
+
+          cat .deploy_config
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Package application
+        run: |
+          set -euo pipefail
+          rm -f deploy.zip
+          zip -qr deploy.zip . \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x ".gitignore" \
+            -x "node_modules/*" \
+            -x "frontend/*" \
+            -x "docker/*" \
+            -x "docs/*" \
+            -x "*.md" \
+            -x "license.txt" \
+            -x "deploy.zip" \
+            -x "playwright-report/*" \
+            -x "test-results/*"
+          ls -lh deploy.zip
+
+      - name: Upload artifact to S3
+        run: |
+          set -euo pipefail
+          aws s3 cp deploy.zip \
+            "s3://${{ secrets.S3_BUCKET_NAME }}/${S3_FOLDER_PREFIX}/${GITHUB_SHA}.zip" \
+            --only-show-errors
+
+      - name: Trigger CodeDeploy
+        id: deploy
+        run: |
+          set -euo pipefail
+
+          deployment_id=""
+          for attempt in $(seq 1 30); do
+            set +e
+            output=$(aws deploy create-deployment \
+              --application-name "$CODEDEPLOY_APP_NAME" \
+              --deployment-group-name "$CODEDEPLOY_GROUP_NAME" \
+              --s3-location "bucket=${{ secrets.S3_BUCKET_NAME }},key=${S3_FOLDER_PREFIX}/${GITHUB_SHA}.zip,bundleType=zip" \
+              --description "Education ${GITHUB_REF_NAME} ${GITHUB_SHA}" \
+              --auto-rollback-configuration enabled=true,events=DEPLOYMENT_FAILURE \
+              --query deploymentId \
+              --output text 2>&1)
+            command_status=$?
+            set -e
+
+            if [[ "$command_status" -eq 0 ]]; then
+              deployment_id="$output"
+              break
+            fi
+
+            if [[ "$output" != *"DeploymentLimitExceededException"* ]]; then
+              echo "$output"
+              exit "$command_status"
+            fi
+
+            echo "Another deployment is active; retrying in 20 seconds (${attempt}/30)"
+            sleep 20
+          done
+
+          if [[ -z "$deployment_id" ]]; then
+            echo "CodeDeploy remained busy for 10 minutes"
+            exit 1
+          fi
+
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+          echo "CodeDeploy accepted deployment $deployment_id"
+
+      - name: Wait for deployment
+        run: |
+          aws deploy wait deployment-successful \
+            --deployment-id "${{ steps.deploy.outputs.deployment_id }}"
+
+      - name: Show deployment status on failure
+        if: failure() && steps.deploy.outputs.deployment_id != ''
+        run: |
+          aws deploy get-deployment \
+            --deployment-id "${{ steps.deploy.outputs.deployment_id }}" \
+            --query "deploymentInfo.{status:status,error:errorInformation,createTime:createTime,completeTime:completeTime}" \
+            --output json
+
+      - name: Verify live site
+        run: |
+          set -euo pipefail
+          for path in / /school /school-portal /api/method/ping; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://apsrohru.erp.himguru.in${path}")
+            if [[ "$code" != "200" ]]; then
+              echo "ERROR: ${path} returned ${code}"
+              exit 1
+            fi
+            echo "${path} -> ${code}"
+          done
