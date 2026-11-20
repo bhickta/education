@@ -28,11 +28,18 @@ fi
 
 rm -rf "$TMP_DIR"
 rm -rf "$PRESERVE_DIR"
-mkdir -p "$PRESERVE_DIR/public/frontend"
+mkdir -p "$PRESERVE_DIR/public/frontend" "$PRESERVE_DIR/education/www"
 
 if [[ -d "$APP_DIR/public/frontend/assets" ]]; then
 	cp -a "$APP_DIR/public/frontend/assets" "$PRESERVE_DIR/public/frontend/assets"
 	log "Preserved previous portal assets"
+fi
+
+# The legacy /edu-portal page is untracked on the live checkout. Keep it so a
+# deploy does not remove a page that was never part of the repository.
+if [[ -f "$APP_DIR/education/www/edu-portal.html" ]]; then
+	cp -a "$APP_DIR/education/www/edu-portal.html" "$PRESERVE_DIR/education/www/edu-portal.html"
+	log "Preserved legacy edu-portal.html"
 fi
 
 if [[ -d "$APP_DIR" ]]; then

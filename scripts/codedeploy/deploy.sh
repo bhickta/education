@@ -57,6 +57,12 @@ if [[ -d "$PRESERVE_DIR/public/frontend/assets" ]]; then
 	log "Restored previous portal assets"
 fi
 
+if [[ -f "$PRESERVE_DIR/education/www/edu-portal.html" ]]; then
+	mkdir -p "$APP_DIR/education/www"
+	cp -an "$PRESERVE_DIR/education/www/edu-portal.html" "$APP_DIR/education/www/edu-portal.html"
+	log "Restored legacy edu-portal.html"
+fi
+
 if [[ -d "$APP_DIR/public/frontend/assets" ]]; then
 	find "$APP_DIR/public/frontend/assets" -type f -mtime +60 -delete
 fi
