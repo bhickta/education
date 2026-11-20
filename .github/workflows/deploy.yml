@@ -108,12 +108,22 @@ jobs:
             -x "frontend/*" \
             -x "docker/*" \
             -x "docs/*" \
-            -x "*.md" \
             -x "license.txt" \
             -x "deploy.zip" \
             -x "playwright-report/*" \
             -x "test-results/*"
           ls -lh deploy.zip
+
+      - name: Validate deployment artifact
+        run: |
+          set -euo pipefail
+          for path in README.md pyproject.toml appspec.yml scripts/codedeploy/deploy.sh; do
+            if ! unzip -Z1 deploy.zip | grep -qx "$path"; then
+              echo "ERROR: $path is missing from deploy.zip"
+              exit 1
+            fi
+          done
+          echo "Artifact contains the packaging files"
 
       - name: Upload artifact to S3
         run: |

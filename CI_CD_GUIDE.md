@@ -53,8 +53,9 @@ S3_BUCKET_NAME=<the existing RAPL bucket> \
 ./scripts/codedeploy/bootstrap-aws.sh
 ```
 
-The script copies the EC2 tag filters from `RaplBaddi-App` /
-`Rapl-Dev-Group`.
+The script targets the app server with the `Name=raplbaddi` tag, not the
+broader `Environment=Production` set, because that also matches the
+`prodrapl-db` database instance.
 
 Add these secrets to this repository:
 

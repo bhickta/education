@@ -10,6 +10,8 @@ APP_NAME="${CODEDEPLOY_APP_NAME:-Education-App}"
 GROUP_NAME="${CODEDEPLOY_GROUP_NAME:-Education-Live-Group}"
 SOURCE_APP="${SOURCE_APP:-RaplBaddi-App}"
 SOURCE_GROUP="${SOURCE_GROUP:-Rapl-Dev-Group}"
+TARGET_TAG_KEY="${TARGET_TAG_KEY:-Name}"
+TARGET_TAG_VALUE="${TARGET_TAG_VALUE:-raplbaddi}"
 S3_BUCKET_NAME="${S3_BUCKET_NAME:-}"
 
 for command in aws python3; do
@@ -51,11 +53,11 @@ else
 		--query deploymentGroupInfo \
 		--output json >"$tmp_source"
 
-	python3 - "$tmp_source" "$tmp_create" "$APP_NAME" "$GROUP_NAME" <<'PY'
+	python3 - "$tmp_source" "$tmp_create" "$APP_NAME" "$GROUP_NAME" "$TARGET_TAG_KEY" "$TARGET_TAG_VALUE" <<'PY'
 import json
 import sys
 
-source_path, output_path, app_name, group_name = sys.argv[1:5]
+source_path, output_path, app_name, group_name, tag_key, tag_value = sys.argv[1:7]
 source = json.load(open(source_path))
 
 payload = {
@@ -71,21 +73,12 @@ payload = {
 		"enabled": True,
 		"events": ["DEPLOYMENT_FAILURE"],
 	},
+	# Target the app server explicitly. Environment=Production also matches
+	# the prodrapl-db database instance.
+	"ec2TagFilters": [
+		{"Key": tag_key, "Value": tag_value, "Type": "KEY_AND_VALUE"},
+	],
 }
-
-if source.get("ec2TagSet"):
-	payload["ec2TagSet"] = source["ec2TagSet"]
-elif source.get("ec2TagFilters"):
-	payload["ec2TagFilters"] = source["ec2TagFilters"]
-elif source.get("onPremisesTagSet"):
-	payload["onPremisesTagSet"] = source["onPremisesTagSet"]
-elif source.get("onPremisesInstanceTagFilters"):
-	payload["onPremisesInstanceTagFilters"] = source["onPremisesInstanceTagFilters"]
-else:
-	raise SystemExit(
-		f"Source group {source.get('applicationName')}/{source.get('deploymentGroupName')} "
-		"has no EC2 or on-premises tag targeting; configure the new group manually."
-	)
 
 with open(output_path, "w") as handle:
 	json.dump(payload, handle)
