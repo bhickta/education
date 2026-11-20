@@ -3,6 +3,6 @@
   "scripts": {
       "postinstall": "cd frontend && yarn install --check-files",
       "dev": "cd frontend && yarn dev",
-      "build": "cd frontend && yarn build"
+      "build": "if [ -d frontend ]; then cd frontend && yarn build; else echo 'frontend source not in deploy artifact; using CI-built assets'; fi"
   }
 }
