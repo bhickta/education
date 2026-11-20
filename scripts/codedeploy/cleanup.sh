@@ -2,6 +2,9 @@
 # CodeDeploy BeforeInstall hook for the Education live deployment group.
 set -euo pipefail
 
+# shellcheck disable=SC1091
+source "$(dirname "$0")/lock.sh"
+
 EXPECTED_GROUP="${CODEDEPLOY_GROUP_NAME:-Education-Live-Group}"
 GROUP_NAME="${DEPLOYMENT_GROUP_NAME:-}"
 
@@ -19,6 +22,9 @@ if [[ "$GROUP_NAME" != "$EXPECTED_GROUP" ]]; then
 	log "ERROR: refusing cleanup for deployment group '$GROUP_NAME' (expected '$EXPECTED_GROUP')"
 	exit 1
 fi
+
+acquire_deploy_lock
+trap 'release_deploy_lock' ERR
 
 free_kb=$(df -Pk /home | awk 'NR==2 {print $4}')
 if [[ "${free_kb:-0}" -lt 2097152 ]]; then

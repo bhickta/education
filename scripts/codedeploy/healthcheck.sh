@@ -2,6 +2,9 @@
 # CodeDeploy ValidateService hook for the Education live deployment group.
 set -euo pipefail
 
+# shellcheck disable=SC1091
+source "$(dirname "$0")/lock.sh"
+
 EXPECTED_GROUP="${CODEDEPLOY_GROUP_NAME:-Education-Live-Group}"
 GROUP_NAME="${DEPLOYMENT_GROUP_NAME:-}"
 SITE_URL="${SITE_URL:-https://apsrohru.erp.himguru.in}"
@@ -12,6 +15,8 @@ if [[ "$GROUP_NAME" != "$EXPECTED_GROUP" ]]; then
 	log "ERROR: refusing health check for deployment group '$GROUP_NAME' (expected '$EXPECTED_GROUP')"
 	exit 1
 fi
+
+trap 'release_deploy_lock' EXIT
 
 for attempt in $(seq 1 18); do
 	if curl -fsS --max-time 10 "$SITE_URL/api/method/ping" >/dev/null 2>&1; then

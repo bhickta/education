@@ -83,9 +83,10 @@ application/group.
 
 Both apps share `dev-bench-v16` and the same site. A deploy of either app runs
 `bench migrate`, `bench clear-cache`, and `bench restart`, so it affects the
-other app. Do not run the Himguru and Education deploys at the same time.
-If simultaneous deploys become common, add a shared `flock` around the
-bench steps in both pipelines.
+other app. The pipelines now share a server-side lock at
+`/var/lock/codedeploy-frappe-bench.lock`: a second deployment waits for the
+first to finish instead of deleting the other app's directory mid-deploy.
+Raplbaddi still uses its own pipeline and is not covered by that lock.
 
 ## Rollback
 

@@ -7,7 +7,7 @@ files:
 hooks:
   BeforeInstall:
     - location: scripts/codedeploy/cleanup.sh
-      timeout: 120
+      timeout: 2700
       runas: root
   AfterInstall:
     - location: scripts/codedeploy/deploy.sh

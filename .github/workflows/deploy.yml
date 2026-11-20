@@ -34,7 +34,7 @@ jobs:
   deploy:
     name: Deploy live
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     environment:
       name: education-live
       url: https://apsrohru.erp.himguru.in

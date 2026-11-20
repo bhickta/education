@@ -2,6 +2,9 @@
 # CodeDeploy AfterInstall hook for the Education live deployment group.
 set -euo pipefail
 
+# shellcheck disable=SC1091
+source "$(dirname "$0")/lock.sh"
+
 EXPECTED_GROUP="${CODEDEPLOY_GROUP_NAME:-Education-Live-Group}"
 GROUP_NAME="${DEPLOYMENT_GROUP_NAME:-}"
 
@@ -25,6 +28,8 @@ if [[ ! -d "$TMP_DIR" ]]; then
 	log "ERROR: CodeDeploy staging directory $TMP_DIR was not created"
 	exit 1
 fi
+
+trap 'release_deploy_lock' ERR
 
 mkdir -p "$ARTIFACTS_ROOT"
 rm -rf "$ARTIFACTS_DIR"
